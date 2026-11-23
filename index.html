@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reference Electrode Converter | Samer Shaker</title>
+<meta name="theme-color" content="#0a6a86">
+<meta name="description" content="Reference electrode potential converter developed by Samer Shaker.">
+<link rel="icon" type="image/png" href="icon.png">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+  html { color-scheme: light; }
+  body { margin: 0; }
+  /* Layout: one narrow column built for a phone. Input card on top, result card, then a table of the same potential on every scale. */
+  :root {
+    --bg: #f1f4f6;
+    --surface: #ffffff;
+    --fg: #13202a;
+    --muted: #586a77;
+    --line: #d9e0e5;
+    --accent: #0a6a86;
+    --accent-fg: #ffffff;
+    --accent-soft: #dcedf3;
+    --field: #f7f9fa;
+    --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1418;
+      --surface: #151f25;
+      --fg: #e5edf1;
+      --muted: #91a3af;
+      --line: #263641;
+      --accent: #5cc2dc;
+      --accent-fg: #06222b;
+      --accent-soft: #173542;
+      --field: #101a1f;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1418;
+    --surface: #151f25;
+    --fg: #e5edf1;
+    --muted: #91a3af;
+    --line: #263641;
+    --accent: #5cc2dc;
+    --accent-fg: #06222b;
+    --accent-soft: #173542;
+    --field: #101a1f;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.45;
+    padding-block: 20px 32px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 520px; margin: 0 auto; display: grid; gap: 14px; }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.55rem;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .lede { margin: 4px 0 0; color: var(--muted); font-size: 0.9rem; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+  }
+  label, .label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  input[type="text"], select {
+    width: 100%;
+    font: inherit;
+    color: var(--fg);
+    background: var(--field);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 12px;
+    min-height: 48px;
+  }
+  select { appearance: auto; }
+  input:focus-visible, select:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .value-row { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+  .value-row .field { flex: 1 1 140px; min-width: 0; }
+  #val {
+    font-family: var(--font-display);
+    font-size: 1.7rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    min-height: 56px;
+  }
+  .btn {
+    font: inherit;
+    font-weight: 600;
+    color: var(--fg);
+    background: var(--field);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    min-height: 56px;
+    min-width: 56px;
+    padding: 0 14px;
+    cursor: pointer;
+  }
+  .btn:active { background: var(--accent-soft); }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button {
+    font: inherit; font-weight: 600; color: var(--muted);
+    background: var(--field); border: 0; min-width: 54px; padding: 0 12px; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+
+  .swap-line { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+  .swap-line::before, .swap-line::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .swap { min-height: 40px; min-width: 40px; border-radius: 999px; padding: 0 14px; font-size: 0.85rem; }
+
+  .result { background: var(--accent-soft); border-color: transparent; }
+  .result .big {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 2.6rem;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+  .result .big small { font-size: 1.1rem; font-weight: 500; margin-left: 4px; color: var(--muted); }
+  .result .vs { color: var(--muted); font-size: 0.92rem; margin-top: 4px; }
+  .result .vs strong { color: var(--fg); font-weight: 600; }
+  .result-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .copy { min-height: 40px; min-width: 40px; font-size: 0.85rem; background: var(--surface); }
+
+  .table { display: grid; }
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: baseline;
+    padding: 10px 8px;
+    border-top: 1px solid var(--line);
+  }
+  .row:first-child { border-top: 0; }
+  .row .name { min-width: 0; }
+  .row .sub { display: block; font-size: 0.78rem; color: var(--muted); }
+  .row .src { display: block; font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+  .row .v { font-variant-numeric: tabular-nums; font-weight: 500; text-align: right; }
+  .row.is-from, .row.is-to { background: var(--accent-soft); border-radius: 8px; border-top-color: transparent; }
+  .tag {
+    display: inline-block; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--accent); margin-left: 6px;
+  }
+  h2 { font-size: 0.95rem; font-weight: 600; margin: 0; }
+  .note { font-size: 0.8rem; color: var(--muted); margin: 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Reference electrode converter</h1>
+    <p class="lede">Developed by <strong>Samer Shaker</strong></p>
+    <p class="lede">Enter a potential measured against one reference electrode and read it against another. Values are for 25&nbsp;°C.</p>
+  </header>
+
+  <section class="card" aria-label="Input">
+    <div>
+      <label for="val">Measured potential</label>
+      <div class="value-row">
+        <div class="field"><input id="val" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="0.350"></div>
+        <button id="sign" class="btn" type="button" aria-label="Change sign">+/−</button>
+        <div class="seg" role="group" aria-label="Unit">
+          <button type="button" id="uV" aria-pressed="true">V</button>
+          <button type="button" id="uMV" aria-pressed="false">mV</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <label for="from">Measured against</label>
+      <select id="from"></select>
+    </div>
+
+    <div class="swap-line"><button id="swap" class="btn swap" type="button">⇅ Swap</button></div>
+
+    <div>
+      <label for="to">Convert to</label>
+      <select id="to"></select>
+    </div>
+
+    <div id="phRow" hidden>
+      <label for="ph">Electrolyte pH (for RHE)</label>
+      <input id="ph" type="text" inputmode="decimal" autocomplete="off" value="7">
+    </div>
+    <div id="customRow" hidden>
+      <label for="custom">Custom electrode, potential vs SHE (V)</label>
+      <input id="custom" type="text" inputmode="decimal" autocomplete="off" value="0.000">
+    </div>
+  </section>
+
+  <section class="card result" aria-live="polite" aria-label="Result">
+    <div class="result-top">
+      <div>
+        <div class="big" id="out">—</div>
+        <div class="vs" id="outSub"></div>
+      </div>
+      <button id="copy" class="btn copy" type="button">Copy</button>
+    </div>
+  </section>
+
+  <section class="card" aria-label="All scales">
+    <h2>Same potential on every scale</h2>
+    <div class="table" id="table"></div>
+  </section>
+
+  <p class="note" style="text-align:center;font-weight:600">© 2026 Samer Shaker · Reference Electrode Converter</p>
+  <p class="note">Values are volts vs SHE at 25&nbsp;°C, from the source named under each electrode: Silvion data sheet "Potential relationships for several different reference electrodes", Park (Materials Performance, September 2009), ISO 12696:2022 Table D.2, EN 12473:2005 and EN 12499:2003. ISO 12696 gives only differences between electrodes, so values marked "Derived from ISO 12696" assume Ag/AgCl (sat. KCl) = 0.199 V. Seawater, fresh water and zinc values are approximate: EN 12473 allows about ±30 mV for Zn/seawater, and Ag/AgCl in dilute chloride shifts about 60 mV per tenfold change in chloride (EN 12499). RHE uses E(RHE) = E(SHE) + 0.0592 × pH. Real electrodes vary with filling solution, age and temperature, so check your electrode's datasheet when accuracy matters.</p>
+</div>
+
+<script>
+(function () {
+  var NERNST = 0.05916; // V per pH unit at 25 °C
+  // v = potential vs SHE in volts at 25 °C. src = where the value comes from.
+  // "Derived from ISO 12696" means ISO 12696:2022 Table D.2 differences, anchored on Ag/AgCl (sat. KCl) = 0.199 V.
+  var REFS = [
+    { id: 'she', grp: 'Hydrogen', name: 'SHE', sub: 'Standard hydrogen electrode', src: 'Definition', v: 0 },
+    { id: 'rhe', grp: 'Hydrogen', name: 'RHE', sub: 'Reversible hydrogen electrode', src: 'E(SHE) + 0.0592 × pH', v: null },
+
+    { id: 'sce', grp: 'Calomel', name: 'SCE', sub: 'Hg/Hg₂Cl₂, saturated KCl', src: 'Silvion. Park gives 0.244, EN 12473 gives 0.24', v: 0.241 },
+    { id: 'nce', grp: 'Calomel', name: 'NCE', sub: 'Calomel, 1 M KCl', src: 'EN 12473', v: 0.280 },
+
+    { id: 'agcl-005', grp: 'Silver / silver chloride', name: 'Ag/AgCl, 0.05 M KCl', sub: '', src: 'Silvion', v: 0.300 },
+    { id: 'agcl-01', grp: 'Silver / silver chloride', name: 'Ag/AgCl, 0.1 M KCl', sub: '', src: 'Silvion. Matches ISO 12696', v: 0.288 },
+    { id: 'agcl-05', grp: 'Silver / silver chloride', name: 'Ag/AgCl, 0.5 M KCl', sub: '', src: 'Silvion, Park. Matches ISO 12696. One Silvion sheet gives 0.240', v: 0.250 },
+    { id: 'agcl-1', grp: 'Silver / silver chloride', name: 'Ag/AgCl, 1 M KCl', sub: '', src: 'Silvion (Bard & Faulkner). Park gives 0.222', v: 0.236 },
+    { id: 'agcl-3', grp: 'Silver / silver chloride', name: 'Ag/AgCl, 3 M KCl', sub: '', src: 'Silvion. Matches ISO 12696', v: 0.210 },
+    { id: 'agcl-35', grp: 'Silver / silver chloride', name: 'Ag/AgCl, 3.5 M KCl', sub: '', src: 'Silvion, Park. Matches ISO 12696', v: 0.205 },
+    { id: 'agcl-4', grp: 'Silver / silver chloride', name: 'Ag/AgCl, 4 M KCl', sub: '', src: 'Silvion', v: 0.200 },
+    { id: 'agcl-sat', grp: 'Silver / silver chloride', name: 'Ag/AgCl, sat. KCl', sub: '', src: 'Park. Matches ISO 12696. Silvion gives 0.197, EN 12473 and EN 12499 give 0.20', v: 0.199 },
+    { id: 'agcl-nacl3', grp: 'Silver / silver chloride', name: 'Ag/AgCl, 3 M NaCl', sub: '', src: 'Derived from ISO 12696', v: 0.209 },
+    { id: 'agcl-sw', grp: 'Silver / silver chloride', name: 'Ag/AgCl, seawater', sub: 'Approximate', src: 'Silvion, Park, EN 12473, EN 12499', v: 0.250 },
+    { id: 'agcl-fw', grp: 'Silver / silver chloride', name: 'Ag/AgCl, fresh water', sub: 'Approximate', src: 'EN 12499', v: 0.350 },
+    { id: 'agcl-dsw', grp: 'Silver / silver chloride', name: 'Ag/AgCl, diluted seawater', sub: 'Below 1% seawater, approximate', src: 'Park', v: 0.370 },
+
+    { id: 'zn', grp: 'Zinc', name: 'Zn, pure metal', sub: 'Quasi-reference', src: 'Park, 3C chart', v: -0.762 },
+    { id: 'znsw', grp: 'Zinc', name: 'Zn, seawater', sub: 'Approximate, about ±30 mV', src: 'EN 12473. EN 12499 gives −0.77', v: -0.78 },
+
+    { id: 'cuso4', grp: 'Other electrodes', name: 'Cu/CuSO₄, sat.', sub: 'Copper sulfate (CSE)', src: 'Implied by ISO 12696, EN 12499 gives 0.32. Silvion and Park give 0.316', v: 0.320 },
+    { id: 'mse', grp: 'Other electrodes', name: 'Hg/Hg₂SO₄, sat. K₂SO₄', sub: 'Mercurous sulfate', src: 'Derived from ISO 12696', v: 0.640 },
+    { id: 'hgo', grp: 'Other electrodes', name: 'Hg/HgO, 1 M NaOH', sub: 'Alkaline solutions', src: 'Derived from ISO 12696', v: 0.098 },
+    { id: 'mno2', grp: 'Other electrodes', name: 'MnO₂, 0.5 M NaOH', sub: 'Manganese dioxide', src: 'Derived from ISO 12696', v: 0.414 },
+    { id: 'tlcl', grp: 'Other electrodes', name: 'Tl/TlCl, 3.5 M KCl', sub: 'Thallium/thallium chloride', src: 'EN 12499', v: -0.57 },
+
+    { id: 'custom', grp: 'Custom', name: 'Custom', sub: 'Offset you enter', src: '', v: null }
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var els = {
+    val: $('val'), sign: $('sign'), uV: $('uV'), uMV: $('uMV'),
+    from: $('from'), to: $('to'), swap: $('swap'),
+    ph: $('ph'), phRow: $('phRow'), custom: $('custom'), customRow: $('customRow'),
+    out: $('out'), outSub: $('outSub'), copy: $('copy'), table: $('table')
+  };
+  var unit = 'V';
+  var lastText = '';
+
+  var groups = {};
+  REFS.forEach(function (r) {
+    ['from', 'to'].forEach(function (k) {
+      var key = k + '|' + r.grp;
+      if (!groups[key]) {
+        groups[key] = document.createElement('optgroup');
+        groups[key].label = r.grp;
+        els[k].appendChild(groups[key]);
+      }
+      var o = document.createElement('option');
+      o.value = r.id;
+      o.textContent = r.name;
+      groups[key].appendChild(o);
+    });
+  });
+  els.from.value = 'agcl-sat';
+  els.to.value = 'she';
+
+  function parse(s) {
+    s = String(s).replace(',', '.').replace('−', '-').trim();
+    if (s === '' || s === '-' || s === '+' || s === '.' || s === '-.') return NaN;
+    var n = Number(s);
+    return isFinite(n) ? n : NaN;
+  }
+
+  function offset(id) {
+    if (id === 'rhe') {
+      var ph = parse(els.ph.value);
+      return -NERNST * (isNaN(ph) ? 0 : ph);
+    }
+    if (id === 'custom') {
+      var c = parse(els.custom.value);
+      return isNaN(c) ? 0 : c;
+    }
+    for (var i = 0; i < REFS.length; i++) if (REFS[i].id === id) return REFS[i].v;
+    return 0;
+  }
+
+  function refName(id) {
+    for (var i = 0; i < REFS.length; i++) if (REFS[i].id === id) return REFS[i].name;
+    return id;
+  }
+
+  function fmt(v, u, plain) {
+    var minus = plain ? '-' : '−';
+    if (u === 'mV') {
+      var m = Math.round(v * 1000);
+      if (m === 0) return '0';
+      return (m < 0 ? minus : '+') + Math.abs(m);
+    }
+    var t = Math.abs(v) < 0.0005 ? 0 : v;
+    if (t === 0) return '0.000';
+    return (t < 0 ? minus : '+') + Math.abs(t).toFixed(3);
+  }
+
+  function inputInVolts() {
+    var x = parse(els.val.value);
+    if (isNaN(x)) return NaN;
+    return unit === 'mV' ? x / 1000 : x;
+  }
+
+  function save() {
+    try {
+      localStorage.setItem('refconv', JSON.stringify({
+        val: els.val.value, unit: unit, from: els.from.value, to: els.to.value,
+        ph: els.ph.value, custom: els.custom.value
+      }));
+    } catch (e) {}
+  }
+
+  function restore() {
+    try {
+      var s = JSON.parse(localStorage.getItem('refconv') || 'null');
+      if (!s) return;
+      if (typeof s.val === 'string') els.val.value = s.val;
+      if (s.unit === 'V' || s.unit === 'mV') unit = s.unit;
+      if (REFS.some(function (r) { return r.id === s.from; })) els.from.value = s.from;
+      if (REFS.some(function (r) { return r.id === s.to; })) els.to.value = s.to;
+      if (typeof s.ph === 'string') els.ph.value = s.ph;
+      if (typeof s.custom === 'string') els.custom.value = s.custom;
+    } catch (e) {}
+  }
+
+  function update() {
+    var from = els.from.value, to = els.to.value;
+    els.phRow.hidden = !(from === 'rhe' || to === 'rhe');
+    els.customRow.hidden = !(from === 'custom' || to === 'custom');
+    els.uV.setAttribute('aria-pressed', unit === 'V');
+    els.uMV.setAttribute('aria-pressed', unit === 'mV');
+
+    var vIn = inputInVolts();
+    if (isNaN(vIn)) {
+      els.out.textContent = '—';
+      els.outSub.textContent = 'Enter a number to convert.';
+      els.table.innerHTML = '';
+      lastText = '';
+      save();
+      return;
+    }
+    var vShe = vIn + offset(from);
+    var vOut = vShe - offset(to);
+
+    els.out.innerHTML = fmt(vOut, unit) + '<small>' + unit + '</small>';
+    var other = unit === 'V' ? 'mV' : 'V';
+    els.outSub.innerHTML = 'vs <strong>' + refName(to) + '</strong> &nbsp;·&nbsp; ' +
+      fmt(vOut, other) + ' ' + other;
+    lastText = fmt(vOut, unit, true) + ' ' + unit + ' vs ' + refName(to);
+
+    var rows = '';
+    REFS.forEach(function (r) {
+      if (r.id === 'custom' && from !== 'custom' && to !== 'custom') return;
+      var v = vShe - offset(r.id);
+      var cls = r.id === from ? ' is-from' : (r.id === to ? ' is-to' : '');
+      var tag = r.id === from && r.id === to ? '<span class="tag">in &amp; out</span>'
+        : r.id === from ? '<span class="tag">measured</span>'
+        : r.id === to ? '<span class="tag">target</span>' : '';
+      var label = r.id === 'rhe' ? r.name + ' (pH ' + (isNaN(parse(els.ph.value)) ? '0' : els.ph.value.trim()) + ')' : r.name;
+      rows += '<div class="row' + cls + '"><span class="name">' + label + tag +
+        (r.sub ? '<span class="sub">' + r.sub + '</span>' : '') +
+        (r.src ? '<span class="src">' + r.src + '</span>' : '') +
+        '</span><span class="v">' + fmt(v, unit) + ' ' + unit + '</span></div>';
+    });
+    els.table.innerHTML = rows;
+    save();
+  }
+
+  function setUnit(u) {
+    if (u === unit) return;
+    var x = parse(els.val.value);
+    if (!isNaN(x)) {
+      var conv = u === 'mV' ? x * 1000 : x / 1000;
+      els.val.value = String(Math.round(conv * 10000) / 10000);
+    }
+    unit = u;
+    update();
+  }
+
+  els.uV.addEventListener('click', function () { setUnit('V'); });
+  els.uMV.addEventListener('click', function () { setUnit('mV'); });
+
+  els.sign.addEventListener('click', function () {
+    var s = els.val.value.trim().replace('−', '-');
+    if (s.charAt(0) === '-') s = s.slice(1);
+    else s = '-' + s;
+    els.val.value = s;
+    update();
+  });
+
+  els.swap.addEventListener('click', function () {
+    var vOut = inputInVolts();
+    var a = els.from.value, b = els.to.value;
+    if (!isNaN(vOut)) {
+      var converted = vOut + offset(a) - offset(b);
+      els.val.value = String(Math.round((unit === 'mV' ? converted * 1000 : converted) * 10000) / 10000);
+    }
+    els.from.value = b;
+    els.to.value = a;
+    update();
+  });
+
+  els.copy.addEventListener('click', function () {
+    if (!lastText) return;
+    var done = function () {
+      els.copy.textContent = 'Copied';
+      setTimeout(function () { els.copy.textContent = 'Copy'; }, 1400);
+    };
+    var fail = function () {
+      var range = document.createRange();
+      range.selectNodeContents(els.out);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      els.copy.textContent = 'Press copy';
+      setTimeout(function () { els.copy.textContent = 'Copy'; }, 1800);
+    };
+    try {
+      navigator.clipboard.writeText(lastText).then(done, fail);
+    } catch (e) { fail(); }
+  });
+
+  ['input', 'change'].forEach(function (ev) {
+    [els.val, els.from, els.to, els.ph, els.custom].forEach(function (el) {
+      el.addEventListener(ev, update);
+    });
+  });
+
+  restore();
+  update();
+})();
+</script>
+</body>
+</html>
